@@ -31,11 +31,13 @@ def create_app(test_config=None) -> Flask:
 
 
 def _safe_root(root: str) -> str:
-    """Reject absolute paths and path traversal; normalize to a relative name."""
+    """Reject absolute paths (POSIX + Windows drive/UNC) and path traversal;
+    normalize to a relative name. Must be platform-independent (tests run on Linux)."""
     root = (root or "").strip().replace("\\", "/").strip("/")
     if not root:
         raise ValueError("workspace root must not be empty")
-    if os.path.isabs(root):
+    drive = len(root) >= 2 and root[1] == ":" and root[0].isalpha()  # C:/...
+    if os.path.isabs(root) or drive or root.startswith("//"):
         raise ValueError("workspace root must be a relative path")
     if any(part == ".." for part in root.split("/")):
         raise ValueError("workspace root must not contain '..'")
