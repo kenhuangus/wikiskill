@@ -1,0 +1,15 @@
+{
+  "r_best": 1.0,
+  "history": [
+    {
+      "iteration": 1,
+      "proposal": "unit-conversion",
+      "val_score": 1.0,
+      "accepted": true,
+      "action": "create"
+    }
+  ],
+  "final_skills": [
+    "unit-conversion"
+  ]
+}

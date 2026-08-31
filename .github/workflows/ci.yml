@@ -24,4 +24,4 @@ jobs:
       - name: CLI demo (mock, end-to-end)
         run: python -m wikiskill.demo --root ci_demo --iterations 3
       - name: Live-server smoke test
-        run: python smoke_test.py
+        run: python smoke_check.py

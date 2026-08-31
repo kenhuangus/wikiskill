@@ -1,0 +1,1 @@
+- [rounding-errors](wiki/patterns/rounding-errors.md): wrong answers from skipped rounding; FIX: round final result to 2 decimals.

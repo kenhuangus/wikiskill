@@ -1,0 +1,23 @@
+{
+  "task_id": "task-005",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a task-solving agent. Complete the task step by step.\n\nYou may use the following tools by replying with a single line:\nTOOL: <tool_name> {\"arg\": \"value\"}\nThe environment will reply with the observation, then you continue.\n\nWhen you are done, reply with your final answer on its own line in the format:\nANSWER: <answer>\n\n## Active skills (follow them when applicable)\n(No active skills.)\n"
+    },
+    {
+      "role": "user",
+      "content": "Convert 12.6667 miles to kilometers. The conversion factor is 1.609344. Report the numeric value rounded to exactly 2 decimal places. (reference: expected=20.39)"
+    },
+    {
+      "role": "assistant",
+      "content": "ANSWER: 20.3"
+    }
+  ],
+  "tool_calls": [],
+  "final_answer": "20.3",
+  "correct": false,
+  "prediction": "20.3",
+  "split": "train",
+  "iteration": "1"
+}
