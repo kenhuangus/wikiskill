@@ -57,12 +57,14 @@ class EvolutionOrchestrator:
     def _score(self, trajs: List[Trajectory]) -> float:
         return self.metric([t.correct for t in trajs])
 
-    def _outcome_summary(self, trajs: List[Trajectory], tasks) -> str:
+    def _outcome_summary(self, trajs: List[Trajectory], tasks, iteration: int) -> str:
         by_id = {t.id: t for t in tasks}
+        # Exact paths: the ReAct proposer only has read_file (no directory listing),
+        # per paper §3.2.3 -- so it must be able to construct valid trace paths.
         return "\n".join(
             f"{tr.task_id}: {'PASS' if tr.correct else 'FAIL'} | "
             f"predicted={tr.prediction!r} ground_truth={by_id[tr.task_id].y!r} "
-            f"| trace: raw/iter_*/{tr.task_id}.json" for tr in trajs)
+            f"| trace: raw/iter_{iteration:03d}/{tr.task_id}.json" for tr in trajs)
 
     def _baseline_validation(self) -> None:
         self.log("Baseline validation (S0 = empty) ...")
@@ -88,7 +90,7 @@ class EvolutionOrchestrator:
                      f"errors={report.get('errors')}")
             # line 11: skill proposal
             proposal = self.proposer.propose(
-                self._outcome_summary(train_trajs, self.dataset.train), k)
+                self._outcome_summary(train_trajs, self.dataset.train, k), k)
             entry = {"iteration": k, "proposal": None, "val_score": None,
                      "accepted": False}
             if proposal:
@@ -109,6 +111,9 @@ class EvolutionOrchestrator:
                         self.skills.restore(snap)      # line 17: skills-only rollback
                     self.log(f"Proposal {applied['action']} '{applied['skill']}' -> "
                              f"val={score:.4f} ({'ACCEPTED' if accepted else 'REJECTED'})")
+                    entry.update({"proposal": applied.get("skill"),
+                                  "action": applied["action"], "val_score": score,
+                                  "accepted": accepted})
                     # line 19: harness records audit trail in skill-impact.md
                     diff = applied.get("diff", "(new skill)")
                     self.ws.record_skill_impact(
@@ -118,11 +123,23 @@ class EvolutionOrchestrator:
                         f"- outcome: {'Accepted' if accepted else 'Rejected'}\n"
                         f"- purpose: {proposal.get('purpose', '')}\n"
                         f"- diff:\n```diff\n{diff}\n```\n")
-                    entry.update({"proposal": applied.get("skill"),
-                                  "action": applied["action"], "val_score": score,
-                                  "accepted": accepted})
+                else:
+                    # Invalid proposal: record it so later iterations never repeat it
+                    # (paper: skill-impact.md is the objective audit trail of ALL
+                    # past interventions).
+                    self.skills.restore(snap)
+                    self.ws.record_skill_impact(
+                        f"\n## Iteration {k} — invalid proposal (discarded)\n"
+                        f"- outcome: Rejected\n"
+                        f"- reason: proposal could not be applied\n"
+                        f"- purpose: {proposal.get('purpose', '')}\n")
             else:
+                # Algorithm 1 line 19 runs every iteration; log no-proposal outcomes
+                # in the evolution log so future proposals avoid repeating them.
                 self.log("No proposal produced this iteration.")
+                self.ws.apply_maintainer_update({
+                    "append_log": f"Iteration {k}: proposer emitted no valid proposal; "
+                                  f"no skill change was evaluated."})
             self.history.append(entry)
         final_skills = self.skills.list_skills()
         result = {"r_best": self.r_best, "history": self.history,

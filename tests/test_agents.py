@@ -67,3 +67,17 @@ def test_stratified_sample():
     s = stratified_sample(traces)
     assert sum(1 for x in s if not x.correct) == 5
     assert sum(1 for x in s if x.correct) == 3
+
+
+def test_stratified_sample_caps_whole_log():
+    """Paper App. C: the ENTIRE execution log is capped at 15,000 chars, not just
+    the last message."""
+    from wikiskill.agents import stratified_sample
+    from wikiskill.datasets import Trajectory
+    big = Trajectory(task_id="big", correct=False, tool_calls=[], final_answer=None,
+                     prediction=None,
+                     messages=[{"role": "system", "content": "s" * 9000},
+                               {"role": "assistant", "content": "a" * 9000}])
+    (sampled,) = stratified_sample([big])
+    assert sum(len(str(m.get("content", ""))) for m in sampled.messages) < 16000
+    assert any("[truncated]" in str(m.get("content", "")) for m in sampled.messages)

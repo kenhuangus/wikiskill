@@ -72,6 +72,8 @@ by the persistent wiki.
    diagnose root causes before proposing.
 3. Propose exactly ONE change: either create a new skill (full content with YAML
    frontmatter: name, description) or patch one existing skill with minimal edits.
+   SKILL.md must also include an "## When to use" section stating the applicability
+   conditions (task types / situations in which the skill applies).
 4. In "purpose", map the skill back to the motivating wiki patterns.
 5. When ready, emit ONLY the finish tool call with valid JSON.
 

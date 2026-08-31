@@ -56,3 +56,40 @@ def test_e2e_early_stop_at_perfect_val(tmp_path):
     # With the skill accepted, val = 1.0 -> the loop must early-stop.
     assert result["r_best"] == 1.0
     assert len(result["history"]) <= 2
+
+
+def test_e2e_no_proposal_iterations_are_audited(tmp_path):
+    """Algorithm 1 line 19 runs every iteration: when the proposer emits nothing,
+    the iteration must still leave a trace in the wiki audit trail."""
+    from wikiskill.orchestrator import EvolutionOrchestrator
+
+    def bad_proposer(messages, call_log):
+        return "Sorry, I could not analyze the traces."
+
+    llm = MockLLM(handlers={"Skill Proposer Agent": bad_proposer})
+    ws = Workspace(str(tmp_path / "ws"))
+    orch = EvolutionOrchestrator(llm=llm, dataset=make_demo_dataset(), ws=ws,
+                                 tools=_demo_tools(), K=2)
+    result = orch.run()
+    assert result["final_skills"] == []           # nothing accepted
+    logs = ws.wiki_logs()
+    assert "no valid proposal" in logs            # audited in evolution log
+    impact_path = tmp_path / "ws" / "wiki" / "skill-impact.md"
+    assert not impact_path.exists()               # skill-impact only logs proposals
+
+
+def test_e2e_invalid_proposal_recorded_in_skill_impact(tmp_path):
+    from wikiskill.orchestrator import EvolutionOrchestrator
+
+    def bad_create(messages, call_log):
+        return ('{"action": "create", "skill": "bad name!", "content": "x", '
+                '"purpose": "p"}')  # invalid skill name -> apply fails
+
+    llm = MockLLM(handlers={"Skill Proposer Agent": bad_create})
+    ws = Workspace(str(tmp_path / "ws"))
+    orch = EvolutionOrchestrator(llm=llm, dataset=make_demo_dataset(), ws=ws,
+                                 tools=_demo_tools(), K=2)
+    orch.run()
+    from wikiskill.skills import SkillsLayer
+    assert "invalid proposal" in ws.skill_impact()
+    assert SkillsLayer(ws).list_skills() == []    # rolled back / never applied

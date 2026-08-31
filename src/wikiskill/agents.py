@@ -64,15 +64,26 @@ class InferenceAgent:
 
 def stratified_sample(traces: List, max_fail: int = 5, max_pass: int = 3,
                       max_chars: int = 15000) -> List:
-    """Paper Appendix C: <=5 failing + <=3 passing traces, each capped at 15,000 chars."""
+    """Paper Appendix C: <=5 failing + <=3 passing traces. Each individual execution
+    log is capped at max_chars (15,000 in the paper) prior to prompt injection."""
     fails = [t for t in traces if not t.correct][:max_fail]
     passes = [t for t in traces if t.correct][:max_pass]
     sampled = fails + passes
     for t in sampled:
-        if len(t.messages) and isinstance(t.messages[-1].get("content"), str) and \
-                len(t.messages[-1]["content"]) > max_chars:
-            c = t.messages[-1]["content"][:max_chars]
-            t.messages[-1] = dict(t.messages[-1], content=c + "\n...[truncated]")
+        # Cap the WHOLE execution log, not just one message: greedily truncate
+        # message contents (longest first) until the serialized trace fits.
+        def total_len(msgs):
+            return sum(len(str(m.get("content", ""))) for m in msgs)
+        msgs = t.messages
+        while total_len(msgs) > max_chars:
+            longest = max(range(len(msgs)),
+                          key=lambda i: len(str(msgs[i].get("content", ""))))
+            content = str(msgs[longest].get("content", ""))
+            keep = max(0, len(content) - (total_len(msgs) - max_chars) - 30)
+            msgs[longest] = dict(msgs[longest],
+                                 content=content[:keep] + "\n...[truncated]")
+            if len(content) <= 40:  # cannot shrink further; avoid infinite loop
+                break
     return sampled
 
 
