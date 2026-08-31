@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/
+build/
+dist/
+wikiskill_demo_workspace/
+wikiskill_workspace/
+demo_ws/
+.vscode/
