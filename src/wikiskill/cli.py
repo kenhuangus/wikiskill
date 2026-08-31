@@ -79,7 +79,10 @@ def main(argv=None) -> int:
                                  ws=Workspace(args.root), tools=tools,
                                  K=args.iterations)
     result = orch.run()
-    print(json.dumps(result, indent=2))
+    # Paper §4: report final skills vs no-skill baseline on the test split with
+    # paired bootstrap significance (paper Appendix C).
+    evaluation = orch.evaluate_test()
+    print(json.dumps({**result, "evaluation": evaluation}, indent=2))
     return 0
 
 

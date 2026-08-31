@@ -1,5 +1,9 @@
 # WikiSkill — Implementation
 
+[![CI](https://github.com/kenhuangus/wikiskill/actions/workflows/ci.yml/badge.svg)](https://github.com/kenhuangus/wikiskill/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+![Python](https://img.shields.io/badge/python-3.9%2B-blue)
+
 Python implementation of **"WikiSkill: Compiling Agent Experience into Persistent
 Knowledge for Skill Evolution"** (arXiv:2608.27454v1, Tang et al., Google Research).
 
@@ -81,8 +85,9 @@ Tabs (see `ui_design.md` for the full design):
 
 ```bash
 pip install -e ".[dev]"
-pytest                                  # 30 tests incl. UI + end-to-end loop
+pytest                                  # 29 tests: unit + end-to-end + UI
 python -m wikiskill.demo                # offline demo with the deterministic MockLLM
+python -m wikiskill serve               # same as `wikiskill serve`
 ```
 
 Demo output: a `wikiskill_demo_workspace/` with `raw/`, `wiki/`, `skills/` populated,

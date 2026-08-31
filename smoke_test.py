@@ -1,5 +1,6 @@
 """Live smoke test: boots the real wikiskill serve stack and exercises it over HTTP."""
 import json
+import shutil
 import subprocess
 import sys
 import time
@@ -8,6 +9,8 @@ import urllib.request
 PORT = 8765
 BASE = f"http://127.0.0.1:{PORT}"
 ok = True
+
+shutil.rmtree("smoke_run", ignore_errors=True)  # fresh workspace per invocation
 
 
 def check(name, cond, extra=""):
