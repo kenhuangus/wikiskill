@@ -76,15 +76,24 @@ class SkillsLayer:
         raise ValueError(f"unknown proposal action: {action!r}")
 
     # ---------- gating rollback (§3.2.4): skills only, wiki untouched ----------
-    def snapshot(self) -> Dict[str, str]:
-        return {name: self.skill_content(name) or "" for name in self.list_skills()}
+    def snapshot(self) -> Dict[str, dict]:
+        """Snapshot the active skill state (SKILL.md + PURPOSE.md) so a rejected
+        proposal can be rolled back exactly to S_{k-1}. The wiki is never included."""
+        return {
+            name: {"SKILL.md": self.skill_content(name) or "",
+                   "PURPOSE.md": self.purpose(name) or ""}
+            for name in self.list_skills()
+        }
 
-    def restore(self, snap: Dict[str, str]) -> None:
+    def restore(self, snap: Dict[str, dict]) -> None:
         for name in self.list_skills():
             if name not in snap:
                 d = os.path.join(self.ws.root, "skills", name)
                 for fn in os.listdir(d):
                     os.remove(os.path.join(d, fn))
                 os.rmdir(d)
-        for name, content in snap.items():
-            self.ws.write_file(os.path.join("skills", name, "SKILL.md"), content)
+        for name, files in snap.items():
+            self.ws.write_file(os.path.join("skills", name, "SKILL.md"),
+                               files["SKILL.md"])
+            self.ws.write_file(os.path.join("skills", name, "PURPOSE.md"),
+                               files["PURPOSE.md"])

@@ -12,16 +12,21 @@ from .workspace import Workspace
 
 def run_demo(root: str = "wikiskill_demo_workspace", K: int = 3) -> dict:
     ws = Workspace(root)
-    skills_logger = []
     orch = EvolutionOrchestrator(
         llm=MockLLM(), dataset=make_demo_dataset(), ws=ws, tools=_demo_tools(), K=K)
     result = orch.run()
+    eval_res = orch.evaluate_test()
+    print("\nTest-set evaluation (final skills vs no-skill baseline):")
+    print(f"  skilled accuracy : {eval_res['skilled_accuracy']:.4f}")
+    print(f"  baseline accuracy: {eval_res['baseline_accuracy']:.4f}")
+    print(f"  bootstrap p      : {eval_res['bootstrap_p_value']:.4f} "
+          f"({'significant' if eval_res['significant'] else 'not significant'})")
     print("\nWorkspace layout:")
     for dirpath, _, files in os.walk(root):
         rel = os.path.relpath(dirpath, root)
         for fn in sorted(files):
             print(f"  {os.path.join(rel, fn)}")
-    return result
+    return {**result, "evaluation": eval_res}
 
 
 if __name__ == "__main__":

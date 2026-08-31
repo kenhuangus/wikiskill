@@ -31,7 +31,9 @@ class EvolutionOrchestrator:
 
     def __init__(self, llm: LLM, dataset: Dataset, ws: Workspace, tools: list,
                  metric: Callable[[List[bool]], float] = None, K: int = 8,
-                 max_react_turns: int = 20, log: Optional[Callable[[str], None]] = None):
+                 max_react_turns: int = 20, log: Optional[Callable[[str], None]] = None,
+                 proposer_on_step=None,
+                 cancel_event=None):
         from .metrics import accuracy
         self.llm = llm
         self.dataset = dataset
@@ -41,17 +43,20 @@ class EvolutionOrchestrator:
         self.skills = SkillsLayer(ws)
         self.inference = InferenceAgent(llm, tools, ws, self.skills)
         self.maintainer = WikiMaintainer(llm, ws)
-        self.proposer = SkillProposer(llm, ws, self.skills, max_turns=max_react_turns)
+        self.proposer = SkillProposer(llm, ws, self.skills, max_turns=max_react_turns,
+                                      on_step=proposer_on_step)
         self.log = log or (lambda s: print(s, flush=True))
+        self.cancel_event = cancel_event  # optional threading.Event for mid-run stop
         self.history: List[dict] = []
         self.r_best = -1.0
 
     # ------------------------------------------------------------------
-    def _rollout(self, tasks, iteration: int, split: str) -> List[Trajectory]:
+    def _rollout(self, tasks, iteration, split: str) -> List[Trajectory]:
         trajs = [self.inference.run(t) for t in tasks]
         for t in trajs:
             self.ws.add_raw_trace(iteration, t.task_id,
-                                  {**t.to_dict(), "split": split, "iteration": iteration})
+                                  {**t.to_dict(), "split": split, "iteration":
+                                   str(iteration)})
         return trajs
 
     def _score(self, trajs: List[Trajectory]) -> float:
@@ -76,6 +81,9 @@ class EvolutionOrchestrator:
     def run(self) -> dict:
         self._baseline_validation()
         for k in range(1, self.K + 1):
+            if self.cancel_event is not None and self.cancel_event.is_set():
+                self.log("Run cancelled by user.")
+                break
             if self.r_best >= 1.0:
                 self.log("R_best reached 1.0; early stop.")
                 break
@@ -149,4 +157,48 @@ class EvolutionOrchestrator:
             json.dump(result, f, indent=2)
         self.log(f"\nEvolution complete. R_best={self.r_best:.4f}, skills={final_skills}")
         return result
+
+    # ------------------------------------------------------------------
+    def evaluate_test(self) -> dict:
+        """Post-evolution evaluation on the test split (paper §4).
+
+        Compares the final evolved skills against a no-skill baseline on D_test and
+        reports both accuracies plus a paired bootstrap significance p-value
+        (paper Appendix C, 1,000 iterations).
+        """
+        from .metrics import paired_bootstrap
+        # Eval traces are auxiliary (not part of the immutable evolution history);
+        # clear any previous eval traces so re-evaluation works on the same workspace.
+        for tag in ("eval_skilled", "eval_baseline"):
+            d = os.path.join(self.ws.root, "raw", tag)
+            if os.path.isdir(d):
+                for fn in os.listdir(d):
+                    os.remove(os.path.join(d, fn))
+                os.rmdir(d)
+
+        skilled_trajs = self._rollout(self.dataset.test, "eval_skilled", "test")
+        skilled = [t.correct for t in skilled_trajs]
+        skilled_acc = self.metric(skilled)
+
+        snap = self.skills.snapshot()
+        try:
+            for name in self.skills.list_skills():
+                d = os.path.join(self.ws.root, "skills", name)
+                for fn in os.listdir(d):
+                    os.remove(os.path.join(d, fn))
+                os.rmdir(d)
+            base_trajs = self._rollout(self.dataset.test, "eval_baseline", "test")
+        finally:
+            self.skills.restore(snap)
+        base = [t.correct for t in base_trajs]
+        base_acc = self.metric(base)
+
+        p = paired_bootstrap(skilled, base, n=1000, seed=42)
+        self.log(f"Test evaluation: skilled={skilled_acc:.4f} "
+                 f"baseline={base_acc:.4f} bootstrap_p={p:.4f}")
+        return {"skilled_accuracy": skilled_acc,
+                "baseline_accuracy": base_acc,
+                "bootstrap_p_value": p,
+                "significant": p < 0.05,
+                "n_test": len(skilled)}
 

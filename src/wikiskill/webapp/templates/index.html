@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WikiSkill — Skill Evolution Workbench</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='13' font-size='13'>📚</text></svg>">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-kicker">arXiv:2608.27454 · Google Research</span>
+    <h1>WikiSkill <span class="sub">Skill Evolution Workbench</span></h1>
+  </div>
+  <div class="topbar-right">
+    <span id="status-pill" class="pill pill-idle">idle</span>
+    <a class="small-link" href="https://arxiv.org/abs/2608.27454" target="_blank" rel="noopener">Paper ↗</a>
+  </div>
+</header>
+
+<nav class="tabs" role="tablist" aria-label="Sections">
+  <button class="tab is-active" data-tab="run" role="tab">▶ Run</button>
+  <button class="tab" data-tab="dashboard" role="tab">Dashboard</button>
+  <button class="tab" data-tab="eval" role="tab">Evaluation</button>
+  <button class="tab" data-tab="workspace" role="tab">Workspace</button>
+  <button class="tab" data-tab="knowledge" role="tab">Knowledge</button>
+  <button class="tab" data-tab="how" role="tab">How it works</button>
+</nav>
+
+<main>
+  <!-- ============================ RUN ============================ -->
+  <section id="tab-run" class="tab-panel is-active">
+    <div class="grid-2">
+      <div class="card">
+        <h2>Configuration</h2>
+        <form id="run-form" autocomplete="off">
+          <label>LLM backend
+            <select id="cfg-backend">
+              <option value="mock">Mock (offline, deterministic)</option>
+              <option value="openai">OpenAI-compatible endpoint</option>
+            </select>
+          </label>
+          <div id="openai-fields" class="hidden">
+            <label>Model<input id="cfg-model" placeholder="e.g. qwen3-27b-instruct"></label>
+            <label>Base URL<input id="cfg-base-url" placeholder="https://api.openai.com/v1"></label>
+            <label>API key<input id="cfg-api-key" type="password" placeholder="sk-... (or env WIKISKILL_API_KEY)"></label>
+            <label>Temperature<input id="cfg-temperature" type="number" step="0.1" min="0" max="2" value="0.7"></label>
+          </div>
+          <div class="grid-2-inner">
+            <label>Max iterations (K)<input id="cfg-iterations" type="number" min="1" max="50" value="8"></label>
+            <label>Max ReAct turns<input id="cfg-react" type="number" min="1" max="40" value="20"></label>
+          </div>
+          <label>Workspace root (blank = auto <code>runs/run_&lt;ts&gt;</code>)
+            <input id="cfg-root" placeholder="runs/my-experiment"></label>
+          <div class="actions">
+            <button id="btn-start" type="submit" class="btn btn-primary">Start evolution</button>
+            <button id="btn-cancel" type="button" class="btn btn-danger hidden">Cancel</button>
+<!-- ========================= DASHBOARD ========================= -->
+  <section id="tab-dashboard" class="tab-panel">
+    <div class="card">
+      <h2>Evolution overview</h2>
+      <p class="muted" id="dash-emptystate">No run yet — start one on the <b>Run</b> tab.</p>
+      <div class="grid-2 hidden" id="dash-charts">
+        <div><h3>R_best over iterations</h3><svg id="chart-rbest" viewBox="0 0 400 180" class="chart"></svg></div>
+        <div><h3>Validation gating (proposals)</h3><svg id="chart-gate" viewBox="0 0 400 180" class="chart"></svg></div>
+      </div>
+      <h3>History</h3>
+      <div class="table-wrap">
+        <table id="dash-table">
+          <thead><tr><th>Iter</th><th>Proposal</th><th>Action</th><th>Val score</th><th>Outcome</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================= EVAL ========================= -->
+  <section id="tab-eval" class="tab-panel">
+    <div class="card">
+      <h2>Test-set evaluation <span class="muted">— final skills vs no-skill baseline (paper §4)</span></h2>
+      <p class="muted" id="eval-emptystate">Evaluation is computed automatically at the end
+      of every run. You can also re-run it for the current workspace below.</p>
+      <div id="eval-cards" class="kpi-row hidden"></div>
+      <div id="eval-bars" class="hidden"></div>
+      <p id="eval-verdict" class="verdict hidden"></p>
+      <div class="actions">
+        <button id="btn-evaluate" class="btn btn-primary">Re-evaluate current workspace</button>
+      </div>
+      <div class="load-row hidden" id="eval-load-form">
+        <label>Workspace root
+          <input id="eval-root" placeholder="runs/run_20260830_120000"></label>
+        <button id="btn-eval-load" class="btn">Load result</button>
+      </div>
+      <p id="eval-error" class="form-error" role="alert"></p>
+    </div>
+  </section>
+
+  <!-- ========================= WORKSPACE ========================= -->
+  <section id="tab-workspace" class="tab-panel">
+    <div class="card">
+      <h2>Workspace explorer</h2>
+      <div class="load-row">
+        <label>Root
+          <input id="ws-root" placeholder="runs/run_20260830_120000"></label>
+        <button id="btn-ws-load" class="btn">Browse</button>
+        <button id="btn-ws-last" class="btn">Last run</button>
+      </div>
+      <p id="ws-error" class="form-error"></p>
+      <div class="ws-split hidden" id="ws-split">
+<!-- ========================= KNOWLEDGE ========================= -->
+  <section id="tab-knowledge" class="tab-panel">
+    <div class="card">
+      <h2>Knowledge &amp; skills</h2>
+      <div class="ktabs">
+        <button class="ktab is-active" data-ktab="skills">Skills</button>
+        <button class="ktab" data-ktab="patterns">Wiki patterns</button>
+        <button class="ktab" data-ktab="index">Index</button>
+        <button class="ktab" data-ktab="logs">Evolution log</button>
+        <button class="ktab" data-ktab="impact">Skill impact</button>
+      </div>
+      <p class="muted" id="know-emptystate">Load a workspace in the Workspace tab to inspect its knowledge and skills.</p>
+      <div id="know-content"></div>
+    </div>
+  </section>
+
+  <!-- ========================= HOW ========================= -->
+  <section id="tab-how" class="tab-panel">
+    <div class="card">
+      <h2>How WikiSkill works</h2>
+      <p><b>WikiSkill</b> co-evolves agent <i>skills</i> with a persistent <i>knowledge base
+      (wiki)</i>. Each evolution iteration runs the loop below; the wiki accumulates
+      across all iterations and is never rolled back.</p>
+      <div class="pipeline">
+        <div class="layer"><b>Raw layer <span>immutable traces τ ~ π(x; S)</span></b></div>
+        <div class="arrow">→</div>
+        <div class="layer"><b>Wiki Maintainer <span>root-cause analysis → patterns</span></b></div>
+        <div class="arrow">→</div>
+        <div class="layer"><b>Skill Proposer <span>ReAct over wiki + traces → P</span></b></div>
+        <div class="arrow">→</div>
+        <div class="layer"><b>Gating <span>accept iff R(T_val) &gt; R_best</span></b></div>
+      </div>
+      <h3>Algorithm 1 (per iteration k)</h3>
+      <pre class="alg">S₀ = ∅, W₀ = ∅;  R_best ← R_baseline(D_val, S₀)
+for k = 1..K:
+    if R_best == 1.0: break
+    T_train,k ← rollouts of π with S_{k-1}      # skills injected, wiki hidden
+    T_sample,k ⊂ T_train,k                       # ≤5 fails + ≤3 passes (App. C)
+    W'_k ← M_WM(W_{k-1}, T_sample,k)             # wiki maintenance (patch edits)
+    P_k  ← M_P(W'_k, S_{k-1}, T_train,k)         # ReAct proposer
+    S'_k ← Apply(S_{k-1}, P_k)
+    if R(T_val,k) > R_best:  accept; S_k ← S'_k; R_best ← R(T_val,k)
+    else:                    roll back skills;  S_k ← S_{k-1}
+    W_k ← Update(W'_k, P_k, R(T_val,k), a_k)     # harness writes skill-impact.md
+return S_K, W_K</pre>
+      <h3>Glossary</h3>
+      <table class="glossary">
+        <tr><td>S_k</td><td>active skill set (skills/)</td></tr>
+        <tr><td>W_k</td><td>persistent wiki (patterns, index, logs, skill-impact)</td></tr>
+        <tr><td>P_k</td><td>single atomic skill proposal (create or patch)</td></tr>
+        <tr><td>M_WM</td><td>Wiki Maintainer agent (consolidates traces into patterns)</td></tr>
+        <tr><td>M_P</td><td>Wiki-informed Skill Proposer agent (multi-turn ReAct)</td></tr>
+        <tr><td>R_best</td><td>best validation score; gating threshold (strict &gt;)</td></tr>
+        <tr><td>R(·)</td><td>accuracy metric on a trace set</td></tr>
+      </table>
+      <p class="muted small">Full detail in <code>design.md</code>, <code>prd.md</code>,
+      <code>ui_design.md</code>, and the paper itself.</p>
+    </div>
+  </section>
+</main>
+
+<footer class="foot"><span>Independent reimplementation for study · <a href="https://arxiv.org/abs/2608.27454" target="_blank" rel="noopener">Tang et al., Google Research (CC BY 4.0)</a></span></footer>
+
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>
+        <div id="ws-tree" class="tree" role="tree"></div>
+        <div class="viewer">
+          <div class="viewer-head"><span id="ws-file-path" class="muted"></span>
+            <select id="ws-view-mode">
+              <option value="auto">auto</option><option value="json">JSON</option>
+              <option value="raw">Raw</option>
+            </select>
+          </div>
+          <pre id="ws-content" class="viewer-content"></pre>
+        </div>
+      </div>
+    </div>
+  </section>
+          </div>
+          <p id="form-error" class="form-error" role="alert"></p>
+        </form>
+      </div>
+
+      <div class="card">
+        <h2>Live console <span class="muted" id="log-root-label"></span></h2>
+        <div id="console" class="console" aria-live="polite"></div>
+        <p class="muted small">Logs stream live; writer events (Wiki Maintainer / Skill
+        Proposer) and validation gating decisions appear as they happen.</p>
+      </div>
+    </div>
+  </section>

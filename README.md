@@ -53,11 +53,35 @@ this work:
 - **Paired bootstrap significance testing** (App. C) in `metrics.py`.
 - Early stop when `R_best == 1.0`.
 
-## Quickstart
+## Web UI
+
+An interactive workbench for running and inspecting the evolution loop:
+
+```bash
+pip install -e ".[ui]"        # installs Flask
+wikiskill serve               # http://127.0.0.1:5000
+# or: python -m wikiskill.cli serve --port 5000
+```
+
+Tabs (see `ui_design.md` for the full design):
+- **Run** — configure backend (offline Mock or any OpenAI-compatible endpoint),
+  iterations, ReAct turns; start/cancel; live SSE console including the Skill
+  Proposer's ReAct `read_file` steps.
+- **Dashboard** — R_best curve, accepted/rejected validation-gating bars, history table.
+- **Evaluation** — final skills vs no-skill baseline on the test split with paired
+  bootstrap p-value (paper §4 + App. C); re-evaluate any workspace.
+- **Workspace** — browse the three-layer workspace (`raw/`, `wiki/`, `skills/`) and
+  view any artifact (JSON pretty-printed, traces, diffs).
+- **Knowledge** — evolved skills (SKILL.md + PURPOSE.md), wiki pattern pages, index,
+  evolution log, skill-impact audit trail.
+- **How it works** — the pipeline, Algorithm 1 pseudocode, and glossary mapped to the
+  paper.
+
+## Quickstart (CLI)
 
 ```bash
 pip install -e ".[dev]"
-pytest                                  # 14 tests incl. end-to-end loop
+pytest                                  # 30 tests incl. UI + end-to-end loop
 python -m wikiskill.demo                # offline demo with the deterministic MockLLM
 ```
 
@@ -76,20 +100,20 @@ API key is read from `--api-key`, `WIKISKILL_API_KEY`, or `OPENAI_API_KEY`.
 Any OpenAI-compatible `/chat/completions` endpoint works (including local vLLM, as in
 the paper). `tasks.jsonl` lines: `{"id", "x", "y", "meta?"}`.
 
-## Layout
-
+Layout
 ```
 src/wikiskill/
 ├── workspace.py    # three layers + patch engine + scoped read_file
 ├── skills.py       # skills layer, apply_proposal, skills-only snapshot/rollback
 ├── agents.py       # InferenceAgent, WikiMaintainer, ReAct SkillProposer, stratified_sample
-├── orchestrator.py # Algorithm 1 with gating/rollback + audit trail
+├── orchestrator.py # Algorithm 1 with gating/rollback + audit trail + test evaluation
 ├── prompts.py      # agent system prompts (adapted from paper Appendix E)
 ├── llm.py          # LLM protocol, OpenAI-compatible client, MockLLM, extract_json
 ├── metrics.py      # accuracy + paired bootstrap (1,000 iterations)
 ├── datasets.py     # dataclasses + synthetic demo dataset
-├── demo.py / cli.py
-└── tests/…         # unit + end-to-end tests
+├── webapp/         # Flask UI (runner + api + SPA: see ui_design.md)
+├── demo.py / cli.py  # `wikiskill demo | evolve | serve`
+└── tests/…         # unit + end-to-end + UI tests
 ```
 
 ## Notes & limitations (mirroring the paper)

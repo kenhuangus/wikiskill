@@ -91,3 +91,9 @@ experience into the wiki so that subsequent skill updates build on it.
    workspace with all three layers populated, and accepts/rolls back proposals correctly.
 3. Code mirrors paper notation (S_k, W_k, P_k, T_sample, R_best) and cites Algorithm 1 steps
    in docstrings.
+4. **Web UI (ui_design.md)**: `wikiskill serve` boots an interactive workbench that can
+   start/cancel evolution runs, stream progress live, browse the three-layer workspace,
+   inspect skills/wiki artifacts, and report test-split evaluation with paired bootstrap.
+   UI covered by Flask test-client tests plus a live-server smoke test.
+5. **Post-run evaluation**: every run reports test-split accuracy for evolved skills vs
+   no-skill baseline with paired-bootstrap significance (paper §4 + App. C).

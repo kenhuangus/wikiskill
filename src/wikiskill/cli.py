@@ -25,11 +25,27 @@ def main(argv=None) -> int:
     e.add_argument("--base-url", default=None)
     e.add_argument("--api-key", default=None)
     e.add_argument("--iterations", type=int, default=8)
+
+    s = sub.add_parser("serve", help="run the WikiSkill web UI (Flask)")
+    s.add_argument("--host", default="127.0.0.1")
+    s.add_argument("--port", type=int, default=5000)
+    s.add_argument("--debug", action="store_true")
     args = p.parse_args(argv)
 
     if args.cmd == "demo":
         from .demo import run_demo
         run_demo(args.root, args.iterations)
+        return 0
+
+    if args.cmd == "serve":
+        try:
+            from .webapp import create_app
+        except ImportError as exc:
+            print("The UI requires Flask. Install it with: "
+                  "pip install -e '.[ui]'  (or: pip install flask)", file=sys.stderr)
+            return 2
+        app = create_app()
+        app.run(host=args.host, port=args.port, debug=args.debug, threaded=True)
         return 0
 
     from .datasets import Dataset, Task, ToolSpec, load_jsonl

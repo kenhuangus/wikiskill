@@ -11,17 +11,16 @@ wikiskill/
 │   ├── __init__.py
 │   ├── llm.py            # LLM provider abstraction: MockLLM, OpenAICompatLLM
 │   ├── workspace.py      # Three-layer workspace: raw/, wiki/, skills/ + patch engine
+│   ├── skills.py         # Skills layer: SKILL.md + PURPOSE.md, snapshot/rollback
 │   ├── prompts.py        # System prompts (Inference / Wiki Maintainer / Skill Proposer)
 │   ├── agents.py         # InferenceAgent, WikiMaintainer, SkillProposer (ReAct)
-│   ├── orchestrator.py   # Algorithm 1: evolution loop, gating, rollback, logging
+│   ├── orchestrator.py   # Algorithm 1: loop, gating, rollback, test evaluation (§4)
 │   ├── metrics.py        # accuracy metric + paired bootstrap significance test
 │   ├── datasets.py       # Task/Trace dataclasses + demo dataset
+│   ├── webapp/           # Web UI (see ui_design.md): runner + Flask api + SPA
 │   ├── demo.py           # End-to-end demo run with mock LLM
-│   └── cli.py            # `wikiskill evolve` / `wikiskill demo` entry point
-└── tests/
-    ├── test_workspace.py
-    ├── test_gating.py
-    └── test_e2e.py
+│   └── cli.py            # `wikiskill demo | evolve | serve` entry point
+└── tests/                # unit, end-to-end, and UI tests
 ```
 
 ## 2. Core data model (`datasets.py`)

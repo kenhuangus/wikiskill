@@ -73,8 +73,14 @@ class Workspace:
             f.write(content)
 
     # ---------- Raw layer: immutable ----------
-    def add_raw_trace(self, iteration: int, task_id: str, trace: dict) -> str:
-        rel = os.path.join("raw", f"iter_{iteration:03d}", f"{task_id}.json")
+    def add_raw_trace(self, iteration, task_id: str, trace: dict) -> str:
+        """Write an immutable raw-layer trace under raw/<subdir>/.
+
+        `iteration` may be an int (formatted `iter_NNN`) or any string tag (e.g.
+        `eval_skilled` for post-hoc test evaluations). Existing files are never
+        overwritten — the raw layer preserves the complete execution history."""
+        subdir = f"iter_{iteration:03d}" if isinstance(iteration, int) else str(iteration)
+        rel = os.path.join("raw", subdir, f"{task_id}.json")
         p = self._abs(rel)
         if os.path.exists(p):
             raise FileExistsError(f"raw layer is immutable: {rel}")

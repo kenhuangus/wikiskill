@@ -112,9 +112,18 @@ class SkillProposer:
     """§3.2.3: P_k = M_P(W'_k, S_{k-1}, T_train,k). Multi-turn ReAct agent that
     reads the wiki index, skill-impact tracker, and traces on demand via read_file."""
 
-    def __init__(self, llm: LLM, ws: Workspace, skills: SkillsLayer, max_turns: int = 20):
+    def __init__(self, llm: LLM, ws: Workspace, skills: SkillsLayer, max_turns: int = 20,
+                 on_step=None):
         self.llm, self.ws, self.skills = llm, ws, skills
         self.max_turns = max_turns
+        self.on_step = on_step  # callable(step: dict) for UI transparency
+
+    def _step(self, **payload):
+        if self.on_step is not None:
+            try:
+                self.on_step({"proposer_step": True, **payload})
+            except Exception:  # pragma: no cover - never break evolution on UI hooks
+                pass
 
     def propose(self, outcome_summary: str, iteration: int) -> Optional[dict]:
         index = self.ws.wiki_index() or "(empty wiki)"
@@ -126,19 +135,26 @@ class SkillProposer:
                 "(raw/iter_.../...) as needed, then finish with your atomic proposal JSON.")
         messages = [{"role": "system", "content": SKILL_PROPOSER_SYSTEM},
                     {"role": "user", "content": user}]
-        for _ in range(self.max_turns):
+        for turn in range(1, self.max_turns + 1):
             text = self.llm.chat(messages, temperature=0.2)
             parsed = extract_json(text)
             if parsed and parsed.get("action") in ("create", "patch"):
+                self._step(turn=turn, kind="proposal", skill=parsed.get("skill"),
+                           action=parsed.get("action"))
                 return parsed
             fm = re.search(r'"path"\s*:\s*"([^"]+)"', text)
             if fm:
-                obs = self.ws.read_file(fm.group(1))
+                path = fm.group(1)
+                obs = self.ws.read_file(path)
+                self._step(turn=turn, kind="read", path=path,
+                           found=not obs.startswith("ERROR"),
+                           snippet=obs[:200])
                 messages.append({"role": "assistant", "content": text})
                 messages.append({"role": "user",
                                  "content": f"read_file observation:\n{obs}"})
                 continue
             messages.append({"role": "assistant", "content": text})
+            self._step(turn=turn, kind="no_tool", snippet=text[:200])
             messages.append({"role": "user", "content":
                              "Reply with a read_file tool call or the finish JSON."})
         return None

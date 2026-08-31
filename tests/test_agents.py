@@ -32,6 +32,22 @@ def test_skills_create_snapshot_restore(tmp_path):
     assert skills.list_skills() == ["s1"]
 
 
+def test_skills_restore_reverts_purpose_md(tmp_path):
+    """A rejected patch must roll back BOTH SKILL.md and PURPOSE.md exactly
+    to S_{k-1} (skills-only rollback, §3.2.4)."""
+    skills = SkillsLayer(_ws(tmp_path))
+    skills.apply_proposal({"action": "create", "skill": "s",
+                           "content": "body", "purpose": "v1"})
+    snap = skills.snapshot()
+    skills.apply_proposal({"action": "patch", "skill": "s",
+                           "edits": [{"op": "append", "content": "extra"}],
+                           "purpose": "v2 (append)"})
+    assert "v2" in skills.purpose("s")
+    skills.restore(snap)
+    assert skills.purpose("s") == "v1\n"
+    assert skills.skill_content("s") == "body"
+
+
 def test_skill_injection_context(tmp_path):
     skills = SkillsLayer(_ws(tmp_path))
     assert "(No active skills.)" in skills.active_skills_context()
